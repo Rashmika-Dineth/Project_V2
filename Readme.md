@@ -1,300 +1,260 @@
+# Machine Vision – Final Project Report
+
 # Integrated Vision-Guided Robotic Pick-and-Place System
 
-## Machine Vision – Final Project
+**1. Introduction**
 
-### 📌 Overview
+This project presents the design and implementation of a complete vision-guided robotic
+pick-and-place system, integrating camera-based object detection with a Dobot MG
+industrial robot. The objective was to combine previously developed course components
+image preprocessing, segmentation, coordinate mapping, and object selection into a
+robust and usable end to end system.
 
-This project implements a complete vision-guided robotic pick-and-place system integrating camera-based object detection with a Dobot MG400 industrial robot.
+The final system enables a camera to detect objects placed on a table, compute their real-
+world coordinates using homography based calibration, and command the robot to pick
+and place selected objects into a designated box. The system provides both a command-
+line interface (CLI) and a graphical user interface (GUI) designed for factory operators.
 
-The system combines:
+**2. System Architecture and Integration**
 
-Image preprocessing
+The system was implemented using modular architecture to ensure maintainability and
+independent testing of each subsystem. The main modules are:
 
-Object segmentation
+- Calibration module
+- Perception (vision) module
+- Robot control module
+- CLI interface
+- Streamlit-based GUI
+- Output
 
-Homography-based coordinate mapping
+The overall processing pipeline is:
 
-Robot control
+1. Camera image acquisition
+2. Image preprocessing and segmentation
+3. Object detection and center extraction (u, v)
+4. Homography-based transformation to robot coordinates (X, Y)
+5. Plan or Execute action
 
-CLI and GUI interfaces
+This modular separation allowed each component to be validated independently before
+full system integration.
 
-The final solution enables automatic detection of objects on a table and commands the robot to pick and place selected objects into a designated drop box.
+**3. Camera-to-Robot Calibration**
 
-### 🏗 System Architecture
+A dedicated calibration application was developed to compute the homography matrix
+between the image plane and the robot workplane.
 
-The system follows a modular architecture for maintainability and independent testing.
+**3.1 Calibration Procedure**
 
-Main Modules
+The calibration process includes:
 
-Calibration Module
+- Capturing an image from the real camera
+- Selecting four-pixel coordinates (u, v) and save them in a json file
+- Recording corresponding robot coordinates (X, Y) on the table plane and save them
+  in a json file
+- Computing a 3×3 homography matrix H
+- Saving the calibration results into H_matrix.json
 
-Perception (Vision) Module
+The JSON files for the calibration contains:
 
-Robot Control Module
+- Homography matrix H
+- Image calibration points
+- Robot calibration points
 
-Command-Line Interface (CLI)
+The calibration file is loaded automatically during detection and picking. This design avoids
+repeated calibration and improves usability.
 
-Streamlit-Based GUI
+The accuracy of object placement strongly depends on calibration precision. Small errors
+in point selection directly affect the mapping quality.
 
-Output Visualization Module
+Capturing image from the robot actual coordinates
 
-Processing Pipeline
+This need to replace with image
 
-Camera image acquisition
+**Capture the real drop off location and get the real pick z location**
 
-Image preprocessing & segmentation
+**Keep the path variables separate**
 
-Object detection and pixel center extraction (u, v)
+**4. Vision-to-Robot Mapping Pipeline**
 
-Homography transformation → robot coordinates (X, Y)
+The perception module detects objects using classical image processing techniques.
 
-Plan or Execute action
+**4.1 Image Processing Steps**
 
-This modular design allows each component to be validated independently before full integration.
+1. Image acquisition
+2. Gaussian blurring
+3. Thresholding or color-based segmentation
+4. Object shape detection
+5. Object center computation
 
-### 📐 Camera-to-Robot Calibration
+For each detected object, the pixel center (u, v) is calculated. The homography matrix H is
+then applied:
 
-A dedicated calibration application computes the homography matrix between the image plane and the robot workplane.
+```
+(𝑋,𝑌, 1 )𝑇=𝐻⋅(𝑢,𝑣, 1 )𝑇
+```
 
-Calibration Procedure
+The resulting (X, Y) coordinates are used as robot targets.
 
-Capture image from camera
+**4.2 Optional Object Selection**
 
-Select four pixel coordinates (u, v)
+The system supports optional filtering by:
 
-Record corresponding robot coordinates (X, Y)
+- **Color** (e.g., red, blue, yellow objects)
+- **Shape** (e.g., circle, square, rectangle)
+- Combined logic (e.g., blue circles)
 
-Compute 3×3 homography matrix H
+This increases flexibility and simulates industrial sorting tasks.
 
-Save results to:
+**4.3 Output Visualization**
 
-outputs/H_matrix.json
+The system generates an annotated overlay image that includes:
 
-Example calibration file:
-https://github.com/Rashmika-Dineth/Project_V2/blob/main/outputs/H_matrix.json
+- Object center marker
+- Pixel coordinates
+- Converted robot coordinates
 
-Calibration File Contains
+In CLI mode, this image is saved to disk.
+In GUI mode, it is displayed directly to the operator.
 
-Homography matrix H
+**5. Plan Mode vs Execute Mode**
 
-Image calibration points
+A key design requirement was safe separation between simulation and real robot motion.
 
-Robot calibration points
+**Plan Mode (Without Dobot Connection)**
 
-⚠ Calibration accuracy directly affects mapping precision.
+- Detect objects
+- Compute and display (X, Y) coordinates
+- Generate overlay image
+- Do not move the robot
 
-### 🎯 Vision-to-Robot Mapping Pipeline
+Plan mode allows validation of detection and coordinate mapping without risk.
 
-Image Processing Steps
+**Execute Mode (Execution After Dobot connection)**
 
-Image acquisition
+- Perform full pick-and-place sequence
+- Move robot to target
+- Activate gripper
+- Move to drop location
+- Release object
 
-Gaussian blurring
+Execute mode is gated:
 
-Thresholding / color-based segmentation
+- CLI requires explicit --mode execute
+- GUI requires Execute toggle and confirmation
 
-Shape detection
+This design ensures operational safety.
 
-Object center computation
+**6. Command-Line Interface (CLI)**
 
-For each detected object:
+The CLI provides full system functionality and was implemented as the mandatory operator
+interface.
 
-(X, Y, 1)ᵀ = H · (u, v, 1)ᵀ
+Example usage:
 
-The computed (X, Y) coordinates are used as robot targets.
-
-### 🎨 Object Selection (Optional Filtering)
-
-The system supports filtering by:
-
-Color: red, blue, yellow
-
-Shape: circle, square, rectangle
-
-Combined logic: e.g., blue circles
-
-This simulates industrial sorting tasks.
-
-### 🖼 Output Visualization
-
-The system generates an annotated overlay image containing:
-
-Object center marker
-
-Pixel coordinates
-
-Converted robot coordinates
-
-In CLI mode → Image saved to disk
-
-In GUI mode → Displayed directly to operator
-
-### 🔐 Plan Mode vs Execute Mode
-
-Safety was a key design requirement.
-
-🧪 Plan Mode (Simulation)
-
-Detect objects
-
-Compute coordinates
-
-Generate overlay image
-
-❌ No robot movement
-
-Used for validation without risk.
-
-🤖 Execute Mode (Real Robot)
-
-Full pick-and-place sequence
-
-Move to target
-
-Activate gripper
-
-Move to drop location
-
-Release object
-
-Safety Gating
-
-CLI requires:
-
---mode execute
-
-GUI requires:
-
-Execute toggle
-
-Confirmation action
-
-### 💻 Command-Line Interface (CLI)
-
-The CLI is the mandatory operator interface.
-
-Run:
 python main.py
-CLI Features
 
-Automatic calibration loading
+The CLI:
 
-Prints pixel & robot coordinates
+- Loads calibration automatically
+- Prints pixel and robot coordinates
+- Displays number of targets found
+- Saves annotated overlay images
+- Provides clear status messages
 
-Displays number of targets
+The interface was designed to be simple, readable, and safe.
 
-Saves annotated overlay image
+**7. Graphical User Interface (GUI)**
 
-Clear status messages
+A Streamlit-based GUI was developed to simulate a factory operator panel.
 
-Designed to be simple, readable, and safe.
+The GUI provides:
 
-### 🖥 Graphical User Interface (GUI)
+- Live or refreshed camera image
+- Mode selection (Plan / Execute)
+- Optional color and shape dropdown selection
+- Buttons:
+  o Capture / Refresh
+  o Detect Target
+  o Run Pick (enabled only in Execute mode)
 
-A Streamlit-based GUI simulates a factory operator panel.
+The interface displays:
 
-GUI Features
+- Annotated image overlay
+- Computed robot coordinates
+- Clear feedback messages
 
-Live / refreshed camera image
+The GUI improves usability compared to the CLI and better represents real industrial
+systems.
 
-Mode selection (Plan / Execute)
+**8. System Performance and Evaluation**
 
-Color & shape dropdown filters
+The system successfully integrates calibration, perception, coordinating transformation,
+and robot control.
 
-Buttons:
+**Detection performance:**
 
-Capture / Refresh
+- Reliable under moderate lighting conditions
+- Sensitive to strong shadows and reflections
 
-Detect Target
+**Mapping accuracy:**
 
-Run Pick (enabled only in Execute mode)
+- Dependent on calibration quality
+- Small millimeter-level errors observed due to manual point selection
 
-GUI Displays
+**Execution performance:**
 
-Annotated image overlay
+- Smooth robot movement
+- Clear separation between simulation and physical motion
 
-Computed robot coordinates
+Overall, the system performs reliably for controlled laboratory conditions.
 
-Status and feedback messages
+**9. Discussion**
 
-The GUI improves usability and better reflects real industrial systems.
+The integration phase required careful debugging of coordinate frames and communication
+between modules. The most challenging aspects were:
 
-### 📊 System Performance
+- **Connecting and communicating with DOBOT using the Python API:**
+  There were some issues when trying to connect to DOBOT using the provided API.
+  Although the ping command was successful and the DOBOT communicated
+  properly with the DOBOT application, some DOBOT devices rejected the API
+  connection itself. The application was also developed to maintain the connection
+  with the DOBOT during program execution and to disconnect once the program is
+  completed or terminated by the user.
+- **Implementing safe execution with separate modules:**
+  Some modules had to be kept separate, and due to the folder structure, there were
+  missing path errors that took additional time to troubleshoot.
+- **Color and shape detection:**
+  The results were affected by lighting conditions, filtering methods, the type of
+  module, and the mask used. It was also identified that different camera types
+  produce different outputs. In some cases, squares were detected as polygons;
+  however, this error was minimized by optimizing the shape detection code.
+- **Camera quality:**
+  During the image capture process, the Streamlit camera was initially planned for
+  use with the web interface. However, the OpenCV camera provided better filtering
+  and overall performance compared to the Streamlit camera. Therefore, the code
+  was developed using OpenCV for image capture.
 
-Detection Performance
+The project demonstrated how individual computer vision techniques become significantly
+more complex when integrated into a real robotic system.
 
-Reliable under moderate lighting
+From a practical perspective, the system is functional but could be improved by:
 
-Sensitive to shadows & reflections
+- Automatic chessboard-based calibration
+- Improved illumination control
+- Multi-object trajectory optimization
+- Error recovery mechanisms
+  The development process provided valuable insight into real-world industrial automation
+  challenges.
 
-Mapping Accuracy
+**10. Conclusion**
 
-Dependent on calibration quality
+This project successfully implemented a complete vision-guided robotic pick-and-place
+system using camera calibration, object detection, coordinate mapping, and robotic
+control.
 
-Millimeter-level errors due to manual point selection
+Both CLI and GUI interfaces operate correctly, and the Plan/Execute mode separation
+ensures safety and usability. The modular architecture supports further expansion and
+industrial adaptation.
 
-Execution Performance
-
-Smooth robot motion
-
-Clear separation between simulation and physical execution
-
-System performs reliably under controlled lab conditions.
-
-### ⚙ Challenges & Discussion
-
-🔌 Dobot API Connectivity
-
-Some devices rejected API connection
-
-Connection management implemented (connect → maintain → disconnect)
-
-🗂 Modular Structure & Path Issues
-
-Folder structure caused path errors during integration
-
-Resolved by separating path variables clearly
-
-🎨 Color & Shape Detection
-
-Lighting conditions affected results
-
-Some squares detected as polygons
-
-Optimized shape detection to reduce errors
-
-📷 Camera Choice
-
-Streamlit camera initially tested
-
-OpenCV camera provided better filtering & performance
-
-Final implementation uses OpenCV for image capture
-
-### 🚀 Future Improvements
-
-Automatic chessboard-based calibration
-
-Improved illumination control
-
-Multi-object trajectory optimization
-
-Error recovery mechanisms
-
-### 🏁 Conclusion
-
-This project successfully implements a complete vision-guided robotic pick-and-place system integrating:
-
-Camera calibration
-
-Object detection
-
-Coordinate transformation
-
-Robotic control
-
-The system includes both CLI and GUI interfaces with a clear Plan/Execute safety separation.
-
-The modular architecture supports future expansion and industrial adaptation.
-
-This project demonstrates the practical application of machine vision in robotic automation systems.
+The project demonstrates the practical application of machine vision techniques in robotic
+automation systems.

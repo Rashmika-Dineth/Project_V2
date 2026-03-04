@@ -44,11 +44,11 @@ def pixel_to_robot(x, y, H):
 ##############################################################################################
 # Detect objects and save with robot coordinates
 ##############################################################################################
-def save_objects_with_robot_coordinates(image_path):
+def save_objects_with_robot_coordinates():
 
-    image = cv2.imread(image_path)
+    image = cv2.imread(IMAGE_PATH)
     if image is None:
-        print("Image not found:", image_path)
+        print("Image not found:", IMAGE_PATH)
         return
 
     H = load_homography()
@@ -60,34 +60,6 @@ def save_objects_with_robot_coordinates(image_path):
 
     output_data = {}
     object_count = 1
-
-    #############################################
-    # Image center coordinates
-    #############################################
-    h_img, w_img = image.shape[:2]
-
-    image_center_pixel = (w_img / 2, h_img / 2)
-    robot_center = pixel_to_robot(image_center_pixel[0],
-                                  image_center_pixel[1],
-                                  H)
-
-    print("\n===== Image Center Info =====")
-    print("Image center pixel (x,y):", image_center_pixel)
-    print("Robot center coordinate (x,y):", robot_center)
-
-    #############################################
-    # Store metadata
-    #############################################
-    output_data["metadata"] = {
-        "image_center": {
-            "x": float(image_center_pixel[0]),
-            "y": float(image_center_pixel[1])
-        },
-        "robot_center": {
-            "x": float(robot_center[0]),
-            "y": float(robot_center[1])
-        }
-    }
 
     #############################################
     # Detect objects
@@ -123,16 +95,6 @@ def save_objects_with_robot_coordinates(image_path):
     # Annotate and save image
     #############################################
     annotated = detector.annotate(image, objects)
-
-    # Draw image center point on annotation
-    center_px = (int(image_center_pixel[0]), int(image_center_pixel[1]))
-    cv2.circle(annotated, center_px, 6, (0, 0, 255), -1)
-    cv2.putText(annotated, "Image Center",
-                (center_px[0] + 10, center_px[1] - 10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                (0, 0, 255),
-                1)
 
     cv2.imwrite(OUTPUT_ANNOTATED_IMAGE, annotated)
     print("Saved annotated image to:", OUTPUT_ANNOTATED_IMAGE)

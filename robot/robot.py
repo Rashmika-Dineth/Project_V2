@@ -116,6 +116,25 @@ def Get_Robot_Calibration_Points():
         return None
 
 ##############################################################################################
+# Read and Save Calibration Points (CMD)
+##############################################################################################
+def Get_Robot_Calibration_Point_UI():
+    current_pos = GetCurrentPosition()
+
+    return {
+        "x": round(float(current_pos[0]), 2),
+        "y": round(float(current_pos[1]), 2),
+        "z": round(float(current_pos[2]), 2),
+        "rx": round(float(current_pos[3]), 2),
+        "ry": round(float(current_pos[4]), 2),
+        "rz": round(float(current_pos[5]), 2),
+    }
+
+def Save_Calibration_Points_UI(points, file_path):
+    with open(file_path, "w") as f:
+        json.dump(points, f, indent=4)
+
+##############################################################################################
 # Move robot to a target position Linearly
 ##############################################################################################
 def Move_Robot_To_Position_L(target_point):

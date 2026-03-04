@@ -14,6 +14,8 @@ import perception.object_detection as object_detection
 # Page Config
 # ============================================================
 
+robot_calibration_point_file = "robot_calibration_points.json"
+
 st.set_page_config(
     page_title="Dobot MG400 - Machine Vision",
     page_icon="🤖",
@@ -31,6 +33,11 @@ st.markdown("---")
 if "robot_connected" not in st.session_state:
     st.session_state.robot_connected = False
 
+if "calibration_step" not in st.session_state:
+    st.session_state.calibration_step = 0
+
+if "calibration_points" not in st.session_state:
+    st.session_state.calibration_points = {}
 
 # ============================================================
 # Helper Functions
@@ -76,12 +83,20 @@ def show_image(image_path, title):
         st.warning(f"{title} not found.")
 
 def run_calibration():
-    with st.spinner("Running calibration..."):
-         calibration.capture_image()
-         calibration.collect_image_points()
-         robot.Get_Robot_Calibration_Points()
-         calibration.generate_homography()
-    st.success("Calibration completed.")
+    try:
+        with st.spinner("Running calibration..."):
+
+            calibration.capture_image()
+            calibration.collect_image_points()
+
+            # robot.Get_Robot_Calibration_Point_UI()
+            # robot.Save_Calibration_Points_UI(st.session_state.calibration_points, robot_calibration_point_file)
+            calibration.generate_homography()
+
+        st.success("Calibration completed.")
+
+    except Exception as e:
+        st.error(f"Calibration failed: {str(e)}")
 
 # ============================================================
 # Layout
@@ -112,6 +127,14 @@ with col1:
     st.markdown("---")
     st.subheader("📦 Pick & Place Filters")
 
+
+
+# ============================================================
+# RIGHT PANEL – VISION SYSTEM
+# ============================================================
+
+with col2:
+    st.subheader("�️ Vision System")
     # Filtering Options
     color_option = st.selectbox(
         "Select Color (optional)",
@@ -134,31 +157,30 @@ with col1:
 
 
 # ============================================================
-# RIGHT PANEL – VISION SYSTEM
-# ============================================================
-
-with col2:
-    st.subheader("👁️ Vision System")
-
-    st.subheader("🖼️ Image Viewer")
-    
-    if st.button("Show Captured Image"):
-        st.image("outputs/captured_img.png", caption="Captured Image", width=500)
-
-    if st.button("Show Annotated Image"):
-        st.image("outputs/annotated_img.png", caption="Annotated Image", width=500)
-
-    if st.button("Show Marked Annotated Image"):
-        st.image("outputs/final_marked_img.png", caption="Marked Annotated Image", width=500)
-
-
-# ============================================================
 # Footer Status
 # ============================================================
-
 st.markdown("---")
-
 if st.session_state.robot_connected:
     st.success("🟢 Robot Status: Connected")
 else:
     st.error("🔴 Robot Status: Disconnected")
+st.markdown("---")
+
+st.subheader("👁️ Vision System")
+col1, col2, col3 = st.columns(3)
+st.markdown("---")
+with col1:
+    try:
+        st.image("outputs/captured_img.png", caption="Captured Image", width=500)
+    except:
+        st.warning("Captured image not found.")
+with col2:
+    try:
+        st.image("outputs/annotated_img.png", caption="Annotated Image", width=500) 
+    except:
+        st.warning("Annotated image not found.")
+with col3:    
+    try:
+        st.image("outputs/final_marked_img.png", caption="Marked Annotated Image", width=500)
+    except:
+        st.warning("Marked annotated image not found.")

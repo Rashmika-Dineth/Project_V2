@@ -183,6 +183,8 @@ def Object_Pick_and_Place(color=None,shape=None):
 
         targets = get_targets(selected_color, selected_shape)
 
+        
+
         print(f"\nFound {len(targets)} objects to pick")
 
         if len(targets) == 0:
@@ -224,4 +226,8 @@ def Object_Pick_and_Place(color=None,shape=None):
         Disconnect_Robot()
 
 
+def main():
+    return None
 
+if __name__ == "__main__":
+    main()

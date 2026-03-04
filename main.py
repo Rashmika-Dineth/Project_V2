@@ -133,6 +133,9 @@ def handle_choice(choice):
     elif choice == '8':
         print("Exiting program. Goodbye!")
         sys.exit()
+    
+    # elif choice == '9':
+        # robot.Load_Calibration_Data()
 
     else:
         print("Invalid option. Please select 1-8.")
@@ -146,7 +149,7 @@ def main():
     while True:
         try:
             print_menu()
-            choice = input("Please select an option (1-7): ")
+            choice = input("Please select an option (1-8): ")
             handle_choice(choice)
 
         except KeyboardInterrupt:
@@ -156,3 +159,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    

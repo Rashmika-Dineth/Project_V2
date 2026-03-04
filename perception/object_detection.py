@@ -16,9 +16,21 @@ H_MATRIX_PATH = "./outputs/H_matrix.json"
 OUTPUT_JSON_PATH = "./outputs/detected_objects.json"
 OUTPUT_ANNOTATED_IMAGE = "./outputs/annotated_img.png"
 OUTPUT_ANNOTATED_IMAGE_CENTER="./outputs/mapping_visualized.png"
+robot_calibration_point_file = "./outputs/robot_calibration_points.json"
 
 SAFE_Z_OFFSET = 60        # distance above object
-PICK_Z = -162             # object surface height
+PICK_Z = 0                # object surface height
+
+##############################################################################################
+# Load the Z data
+##############################################################################################
+def Load_Z_Data():
+    global PICK_Z
+    print("\nLoading robot calibration data...")
+    with open(robot_calibration_point_file, "r") as f:
+         data = json.load(f)
+         PICK_Z = data["point5"]["z"]
+         return PICK_Z
 
 ##############################################################################################
 # Load homography matrix
@@ -174,6 +186,8 @@ def get_targets(selected_color=None, selected_shape=None):
     """
     data = load_objects()
     targets = []
+
+    Load_Z_Data()
 
     for key, point in data.items():
 

@@ -24,8 +24,27 @@ dashboard, move, feed, feed_thread = None, None, None, None
 ROBOT_IP = "192.168.1.6"
 HOME_POINT = [350, 0, 0, 0]
 DROP_POINT = [227, -243, -80, -83]
-DROP_POINT_UP = [227, -243, -20, -83]
-robot_calibration_point_file = "robot_calibration_points.json"
+SAFE_Z_OFFSET = 80
+robot_calibration_point_file = "./outputs/robot_calibration_points.json"
+ 
+##############################################################################################
+# Load the Json file
+##############################################################################################
+def Load_DROP_Data():
+    global DROP_POINT, DROP_POINT_UP
+    print("\nUpdating Dropoff location robot calibration data...")
+    with open(robot_calibration_point_file, "r") as f:
+         data = json.load(f)
+         DROP_POINT = [data["point6"]["x"], data["point6"]["y"], data["point6"]["z"], data["point6"]["rx"], data["point6"]["ry"], data["point6"]["rz"]]
+         DROP_POINT_UP = [data["point6"]["x"], data["point6"]["y"], data["point6"]["z"] + SAFE_Z_OFFSET, data["point6"]["rx"], data["point6"]["ry"], data["point6"]["rz"]]
+        #  DROP_POINT[0] = data["point6"]["z"]
+        #  DROP_POINT[1] = data["point6"]["z"]
+        #  DROP_POINT[2] = data["point6"]["z"]
+        #  DROP_POINT[3] = data["point6"]["rx"]
+        #  DROP_POINT[4] = data["point6"]["ry"]
+        #  DROP_POINT[5] = data["point6"]["rz"]
+         return True
+
 
 ##############################################################################################
 # Connect to robot and setup
@@ -46,6 +65,10 @@ def Connect_Robot():
         
         # Setup and enable robot
         SetupRobot(dashboard, speed_ratio=50, acc_ratio=50)
+
+        Load_DROP_Data()
+
+
     except KeyboardInterrupt:
         print("\n\nProgram interrupted by user")
         DisconnectRobot(dashboard, move, feed, feed_thread)        

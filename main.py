@@ -1,48 +1,107 @@
 import subprocess
 import sys
-import robot.robot as robot
-import perception.object_detection as object_detection
+from time import sleep
 
-target_point = [350, 0, 0, 0]
+from . import calibration
+from . import robot
+from .perception import object_detection
 
-##############################################################################################
+
+# ============================================================
+# Utility Functions
+# ============================================================
 
 def run_streamlit():
-    subprocess.run(["streamlit", "run", "ui/ui.py"])
+    """Launch Streamlit UI."""
+    subprocess.run(["streamlit", "run", "ui/dashboard.py"])
 
-def main():
-    print("==================================================================================")
-    print("Welcome to the Machine Vision Project!")
-    print("==================================================================================")
-    print("1. Connect to Dobot MG400 Robot")
-    print("2. Disconnect from Dobot MG400 Robot")
-    print("3. Get Robot Calibration Points")
-    print("4. Run Robot Movement")
-    print("5. Object Detection")
+
+def calibrate_robot():
+    """Run full calibration process."""
+    print("Starting calibration...")
+    
+    calibration.capture_image()
+    calibration.collect_image_points()
+    robot.Get_Robot_Calibration_Points()
+
+    print("Generating homography matrix...")
+    sleep(1)
+
+    calibration.generate_homography()
+    print("Calibration completed successfully.")
+
+
+def image_object_detection():
+    """Capture image and detect objects."""
+    print("Capturing image and detecting objects...")
+    
+    calibration.capture_image()
+    object_detection.save_objects_with_robot_coordinates()
+    object_detection.mark_coordinates_on_annotated_image()
+
+    print("Object detection completed.")
+
+
+# ============================================================
+# Menu System
+# ============================================================
+
+def print_menu():
+    print("\n" + "=" * 82)
+    print("           Machine Vision Project - Dobot MG400")
+    print("=" * 82)
+    print("1. Connect to Robot")
+    print("2. Disconnect from Robot")
+    print("3. Calibration")
+    print("4. Object Detection")
+    print("5. Object Pick and Place")
     print("6. Run Streamlit UI")
     print("7. Exit")
-    print("==================================================================================")
+    print("=" * 82)
 
-    choice = input("Please select an option (1-7): ")
 
-    switch = {
-        '1': lambda: (robot.Connect_Robot()),
-        '2': lambda: (robot.Disconnect_Robot()),
-        '3': lambda: (robot.Get_Robot_Calibration_Points()),
-        '4': lambda: (robot.Move_Robot_To_Position_L(target_point)),
-        '5': lambda: object_detection.run_object_detection(),
-        '6': lambda: run_streamlit(),
-        '7': lambda: sys.exit("Exiting program. Goodbye!")
+def handle_choice(choice):
+    if choice == '1':
+        robot.Connect_Robot()
 
-    }
+    elif choice == '2':
+        robot.Disconnect_Robot()
 
-    func = switch.get(choice, lambda: print("Invalid option. Please select 1-7."))
+    elif choice == '3':
+        calibrate_robot()
 
-    try:
-        func()
-    except KeyboardInterrupt:
-        print("\nProgram stopped by user.") 
+    elif choice == '4':
+        image_object_detection()
+
+    elif choice == '5':
+        robot.Object_Pick_and_Place()
+
+    elif choice == '6':
+        run_streamlit()
+
+    elif choice == '7':
+        print("Exiting program. Goodbye!")
+        sys.exit()
+
+    else:
+        print("Invalid option. Please select 1-7.")
+
+
+# ============================================================
+# Main Loop
+# ============================================================
+
+def main():
+    while True:
+        try:
+            print_menu()
+            choice = input("Please select an option (1-7): ")
+            handle_choice(choice)
+
+        except KeyboardInterrupt:
+            print("\nProgram stopped by user.")
+            sys.exit()
+
 
 if __name__ == "__main__":
-    while True:
-        main()
+    main()

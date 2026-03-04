@@ -227,7 +227,7 @@ def main():
     # generate_homography()
     # # Step 4
     # test_transformation()
-    return True
+    return None
 
 if __name__ == "__main__":
     main()

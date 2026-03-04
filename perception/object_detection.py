@@ -6,7 +6,7 @@ import os
 ##############################################################################################
 # Import your class from the other file
 ##############################################################################################
-from colshap import ShapeColorDetector
+from perception.colshap import ShapeColorDetector
 
 ##############################################################################################
 # File paths
@@ -237,7 +237,7 @@ def get_targets(selected_color=None, selected_shape=None):
 def main():
     # save_objects_with_robot_coordinates(IMAGE_PATH)
     # mark_coordinates_on_annotated_image()
-    print(get_targets(None, selected_shape="polygon"))
+    # print(get_targets(None, selected_shape="polygon"))
     return True
 if __name__ == "__main__":
     main()

@@ -12,6 +12,7 @@ from robot.dobot_controller import (
     GetCurrentPosition,
     DisconnectRobot
 )
+from perception.object_detection import get_targets
 import json
 from time import sleep
 
@@ -21,7 +22,9 @@ from time import sleep
 
 dashboard, move, feed, feed_thread = None, None, None, None
 ROBOT_IP = "192.168.1.6"
-target_point = [350, 0, 0, 0]
+HOME_POINT = [350, 0, 0, 0]
+DROP_POINT = [227, -243, -80, -83]
+DROP_POINT_UP = [227, -243, -20, -83]
 robot_calibration_point_file = "robot_calibration_points.json"
 
 ##############################################################################################
@@ -148,4 +151,58 @@ def Activate_Digital_Output(status=0):
     ControlDigitalOutput(dashboard, output_index=output_index, status=status) 
     sleep(0.2)  # Wait for the command to execute
     return True
+
 ##############################################################################################
+# Object Pick and Place
+##############################################################################################
+def Object_Pick_and_Place(color=None,shape=None):
+
+    try:
+        # Get selection from app buttons (CHANGE HERE)
+        selected_color = color      # Example
+        selected_shape = shape       # Example
+
+        targets = get_targets(selected_color, selected_shape)
+
+        print(f"\nFound {len(targets)} objects to pick")
+
+        if len(targets) == 0:
+            print("No matching objects found.")
+            return
+
+        # Move to Home first
+        Move_Robot_To_Position_J(HOME_POINT)
+
+        # =========================
+        # PICK AND PLACE LOOP
+        # =========================
+        for i, (high, low) in enumerate(targets):
+
+            print(f"\nPicking object {i+1}")
+
+            # Approach
+            Move_Robot_To_Position_J(high)
+            status = Move_Robot_To_Position_J(low)
+            # Pick (vacuum ON)
+            status == True and Activate_Digital_Output(status=1)
+            # Lift
+            Move_Robot_To_Position_J(high)
+            # Move to drop
+            Move_Robot_To_Position_J(DROP_POINT_UP)
+            Move_Robot_To_Position_J(DROP_POINT)
+            Activate_Digital_Output(status=0)  
+            Move_Robot_To_Position_J(DROP_POINT_UP)
+
+        # Return Home after finishing
+        Move_Robot_To_Position_J(HOME_POINT)   
+
+    except KeyboardInterrupt:
+        print("\nProgram interrupted by user")
+        Disconnect_Robot()
+
+    except Exception as e:
+        print(f"\nERROR: {e}")
+        Disconnect_Robot()
+
+
+

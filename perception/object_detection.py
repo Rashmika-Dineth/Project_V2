@@ -17,6 +17,9 @@ OUTPUT_JSON_PATH = "./outputs/detected_objects.json"
 OUTPUT_ANNOTATED_IMAGE = "./outputs/annotated_img.png"
 OUTPUT_ANNOTATED_IMAGE_CENTER="./outputs/mapping_visualized.png"
 
+SAFE_Z_OFFSET = 60        # distance above object
+PICK_Z = -162             # object surface height
+
 ##############################################################################################
 # Load homography matrix
 ##############################################################################################
@@ -193,11 +196,48 @@ def mark_coordinates_on_annotated_image(
     cv2.destroyAllWindows()
 
 ##############################################################################################
+# Load the Json file
+##############################################################################################
+def load_objects():
+    with open(OUTPUT_JSON_PATH, "r") as f:
+        return json.load(f)
+
+##############################################################################################
+# Read detected objects based on color and shape and return target points for robot
+##############################################################################################
+def get_targets(selected_color=None, selected_shape=None):
+    """
+    Returns list of (high_point, low_point) tuples
+    filtered by color and/or shape
+    """
+    data = load_objects()
+    targets = []
+
+    for key, point in data.items():
+
+        color_match = (selected_color is None) or (point["color"] == selected_color)
+        shape_match = (selected_shape is None) or (point["shape"] == selected_shape)
+
+        if color_match and shape_match:
+
+            x = point["robot"]["x"]
+            y = point["robot"]["y"]
+
+            high_point = [x, y, PICK_Z + SAFE_Z_OFFSET, 0]
+            low_point = [x, y, PICK_Z, 0]
+
+            targets.append((high_point, low_point))
+
+
+    return targets
+
+##############################################################################################
 # Main
 ##############################################################################################
 def main():
     # save_objects_with_robot_coordinates(IMAGE_PATH)
     # mark_coordinates_on_annotated_image()
+    print(get_targets(None, selected_shape="polygon"))
     return True
 if __name__ == "__main__":
     main()

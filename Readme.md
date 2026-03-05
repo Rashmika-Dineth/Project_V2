@@ -2,6 +2,8 @@
 
 # Integrated Vision-Guided Robotic Pick-and-Place System
 
+[Open Full Documentation (PDF)](Report/Report.pdf)
+
 **1. Introduction**
 
 This project presents the design and implementation of a complete vision-guided robotic

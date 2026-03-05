@@ -56,7 +56,7 @@ def pixel_to_robot(x, y, H):
 ##############################################################################################
 # Detect objects and save with robot coordinates
 ##############################################################################################
-def save_objects_with_robot_coordinates():
+def save_objects_with_robot_coordinates(color,shape):
 
     image = cv2.imread(IMAGE_PATH)
     if image is None:
@@ -68,7 +68,7 @@ def save_objects_with_robot_coordinates():
         return
 
     detector = ShapeColorDetector()
-    objects = detector.detect(image)
+    objects = detector.detect(image,color,shape)
 
     output_data = {}
     object_count = 1

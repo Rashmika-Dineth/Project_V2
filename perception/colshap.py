@@ -45,13 +45,11 @@ class ShapeColorDetector:
         v, area = len(approx), cv2.contourArea(c)
         circ = 4 * np.pi * area / (p**2) if p > 0 else 0
         ar = (lambda b: b[2] / b[3] if b[3] > 0 else 0)(cv2.boundingRect(c))
-        if circ > 0.82:
+        if circ > 0.9:
             return "circle"
-        if v == 3:
-            return "triangle"
-        if v == 4:
-            return "square" if 0.8 <= ar <= 1.2 else "rectangle"
-        return "polygon"
+        else:
+            return "square" 
+
 
     def detect(self, image, color_filter=None, shape_filter=None):
         blurred = cv2.GaussianBlur(image, (5, 5), 0)

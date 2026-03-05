@@ -1,5 +1,4 @@
-import subprocess
-import sys
+import argparse
 from time import sleep
 
 import calibration.calibration as calibration
@@ -7,156 +6,122 @@ import robot.robot as robot
 import perception.object_detection as object_detection
 
 
-# ============================================================
-# Utility Functions
-# ============================================================
-
-def run_streamlit():
-    """Launch Streamlit UI."""
-    subprocess.run(["streamlit", "run", "ui/dashboard.py"])
-
-
-def calibrate_robot():
-    """Run full calibration process."""
+def calibrate():
     print("Starting calibration...")
-    
+    robot.Dashboard(enable=False)
+
     calibration.capture_image()
     calibration.collect_image_points()
     robot.Get_Robot_Calibration_Points()
 
     print("Generating homography matrix...")
-    sleep(1)
+    sleep(0.5)
 
     calibration.generate_homography()
+
     print("Calibration completed successfully.")
+    robot.Dashboard(enable=True)
 
 
-def image_object_detection():
-    """Capture image and detect objects."""
-    print("Capturing image and detecting objects...")
-    
-    calibration.capture_image()
-    object_detection.save_objects_with_robot_coordinates()
-    object_detection.mark_coordinates_on_annotated_image()
+def detect(mode, color=None, shape=None):
+    print(f"[DETECT] mode={mode}, color={color}, shape={shape}")
 
-    print("Object detection completed.")
+    if mode == "plan":
+        calibration.capture_image()
+        object_detection.save_objects_with_robot_coordinates(color,shape)
+        object_detection.mark_coordinates_on_annotated_image()
+        robot.Load_DROP_Data()
 
-def pick_place_color_shape():
+        print("Detection planning completed.")
 
-    shape = "all"
-    color = "all"
-
-    print ("Starting pick and place operation based on color and shape...")
-    print("Select object shape to pick and place:")
-    print("1. Circle")
-    print("2. Square")
-    print("3. Triangle")
-    print("4. All shapes")
-    shape_choice = input("Enter shape choice (1-4): ")
-    
-
-    if shape_choice == '1':
-        shape = "circle"
-    elif shape_choice == '2':
-        shape = "square"
-    elif shape_choice == '3':
-        shape = "triangle"
-    elif shape_choice == '4':
-        shape = "all"
-    else:
-        print("Invalid shape choice. Defaulting to all shapes.")
-        shape = "all"
-
-
-    print("\nSelect object color to pick and place:")
-    print("1. Red")
-    print("2. Green")
-    print("3. Blue")
-    print("4. Yellow")
-    print("5. All colors")
-    color_choice = input("Enter color choice (1-5): ")
-
-    if color_choice == '1':
-        color = "red"
-    elif color_choice == '2':
-        color = "green"
-    elif color_choice == '3':
-        color = "blue"
-    elif color_choice == '4':
-        color = "yellow"
-    elif color_choice == '5':
-        color = "all"
-    else:
-        print("Invalid color choice. Defaulting to all colors.")
-        color = "all"
-    print(f"\nRunning pick and place for shape: {shape}, color: {color}...")    
-    robot.Object_Pick_and_Place(color, shape)
-
-    print("Pick and place operation completed.")
-# ============================================================
-# Menu System
-# ============================================================
-
-def print_menu():
-    print("\n" + "=" * 82)
-    print("           Machine Vision Project - Dobot MG400")
-    print("=" * 82)
-    print("1. Connect to Robot                  5. Object Pick and Place")
-    print("2. Disconnect from Robot             6. Pick Place with color and shape")
-    print("3. Calibration                       7. Run Streamlit UI")
-    print("4. Object Detection                  8. Exit ")
-    print("=" * 82)
-
-
-def handle_choice(choice):
-    if choice == '1':
+    elif mode == "execute":
+        robot.Load_DROP_Data()
         robot.Connect_Robot()
 
-    elif choice == '2':
-        robot.Disconnect_Robot()
-
-    elif choice == '3':
-        calibrate_robot()
-
-    elif choice == '4':
-        image_object_detection()
-
-    elif choice == '5':
+        sleep(0.5)
         robot.Object_Pick_and_Place()
 
-    elif choice == '6':
-        pick_place_color_shape()
+        sleep(0.2)
+        robot.Disconnect_Robot()
 
-    elif choice == '7':
-        run_streamlit()
-
-    elif choice == '8':
-        print("Exiting program. Goodbye!")
-        sys.exit()
-    
-    # elif choice == '9':
-        # robot.Load_Calibration_Data()
+        print("Detection execution completed.")
 
     else:
-        print("Invalid option. Please select 1-8.")
+        print(f"Unknown mode: {mode}")
 
 
-# ============================================================
-# Main Loop
-# ============================================================
+def pick(mode, color=None, shape=None):
+    print(f"[PICK] mode={mode}, color={color}, shape={shape}")
+
+    if mode != "execute":
+        print("Pick command supports only execute mode.")
+        return
+
+    robot.Load_DROP_Data()
+    robot.Connect_Robot()
+
+    sleep(0.5)
+    robot.Object_Pick_and_Place(color, shape)
+
+    sleep(0.2)
+    robot.Disconnect_Robot()
+
+    print("Pick execution completed.")
+
 
 def main():
-    while True:
-        try:
-            print_menu()
-            choice = input("Please select an option (1-8): ")
-            handle_choice(choice)
+    parser = argparse.ArgumentParser(description="CLI Tool")
 
-        except KeyboardInterrupt:
-            print("\nProgram stopped by user.")
-            sys.exit()
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # ---------- detect ----------
+    parser_detect = subparsers.add_parser("detect")
+
+    parser_detect.add_argument(
+        "--mode",
+        required=True,
+        choices=["plan", "execute"]
+    )
+
+    # Optional filters
+    parser_detect.add_argument("--color", required=False)
+    parser_detect.add_argument("--shape", required=False)
+
+    parser_detect.set_defaults(
+        func=lambda args: detect(
+            args.mode,
+            args.color,
+            args.shape
+        )
+    )
+
+    # ---------- pick ----------
+    parser_pick = subparsers.add_parser("pick")
+
+    parser_pick.add_argument(
+        "--mode",
+        required=True,
+        choices=["execute"]
+    )
+
+    parser_pick.add_argument("--color", required=False)
+    parser_pick.add_argument("--shape", required=False)
+
+    parser_pick.set_defaults(
+        func=lambda args: pick(
+            args.mode,
+            args.color,
+            args.shape
+        )
+    )
+
+    # ---------- calibrate ----------
+    parser_calibrate = subparsers.add_parser("calibrate")
+    parser_calibrate.set_defaults(func=lambda args: calibrate())
+
+    args = parser.parse_args()
+    args.func(args)
 
 
 if __name__ == "__main__":
     main()
-    

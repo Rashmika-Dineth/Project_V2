@@ -2,6 +2,7 @@ import streamlit as st
 from PIL import Image
 import os
 import sys
+from time import sleep
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -30,8 +31,6 @@ st.markdown("---")
 # Session State
 # ============================================================
 
-if "robot_connected" not in st.session_state:
-    st.session_state.robot_connected = False
 
 if "calibration_step" not in st.session_state:
     st.session_state.calibration_step = 0
@@ -46,7 +45,6 @@ if "calibration_points" not in st.session_state:
 def connect_robot():
     try:
         robot.Connect_Robot()
-        st.session_state.robot_connected = True
         st.success("Robot connected successfully.")
     except Exception as e:
         st.error(f"Failed to connect to robot")
@@ -55,7 +53,6 @@ def connect_robot():
 def disconnect_robot():
     try:        
         robot.Disconnect_Robot()
-        st.session_state.robot_connected = False
         st.warning("Robot disconnected.")
     except Exception as e:
         st.error(f"Failed to disconnect from robot")
@@ -63,14 +60,25 @@ def disconnect_robot():
 
 def run_detection():
     with st.spinner("Capturing and detecting objects..."):
+        robot.Dashboard(enable=False) 
+        sleep(0.2)
         calibration.capture_image()
         object_detection.save_objects_with_robot_coordinates()
         object_detection.mark_coordinates_on_annotated_image()
+        robot.Dashboard(enable=True) 
+        sleep(0.2)
     st.success("Detection completed.")
 
 
 def run_pick_and_place(color, shape):
     with st.spinner("Running Pick and Place..."):
+        robot.Load_DROP_Data()
+     # Disable robot during object detection
+        # calibration.capture_image()
+        # object_detection.save_objects_with_robot_coordinates()
+        # object_detection.mark_coordinates_on_annotated_image()
+        robot.Dashboard(enable=True)
+        sleep(0.3)
         robot.Object_Pick_and_Place(color=color, shape=shape)
     st.success("Pick and Place completed.")
 
@@ -85,14 +93,16 @@ def show_image(image_path, title):
 def run_calibration():
     try:
         with st.spinner("Running calibration..."):
-
+            robot.Dashboard(enable=False) 
+            sleep(0.2)
             calibration.capture_image()
             calibration.collect_image_points()
 
             # robot.Get_Robot_Calibration_Point_UI()
             # robot.Save_Calibration_Points_UI(st.session_state.calibration_points, robot_calibration_point_file)
             calibration.generate_homography()
-
+            robot.Dashboard(enable=True) 
+            sleep(0.2)
         st.success("Calibration completed.")
 
     except Exception as e:
@@ -111,11 +121,9 @@ col1, col2 = st.columns(2)
 with col1:
     st.subheader("🔌 Robot Control")
 
-    if not st.session_state.robot_connected:
-        if st.button("Connect Robot", use_container_width=True):
+    if st.button("Connect Robot", use_container_width=True):
             connect_robot()
-    else:
-        if st.button("Disconnect Robot", use_container_width=True):
+    if st.button("Disconnect Robot", use_container_width=True):
             disconnect_robot()
 
     if st.button("Calibration", use_container_width=True):
@@ -138,32 +146,26 @@ with col2:
     # Filtering Options
     color_option = st.selectbox(
         "Select Color (optional)",
-        ["None", "red", "green", "blue", "yellow"]
+        ["All", "red", "green", "blue", "yellow"]
     )
 
     shape_option = st.selectbox(
         "Select Shape (optional)",
-        ["None", "circle", "square", "triangle"]
+        ["All", "circle", "square", "triangle"]
     )
 
-    selected_color = None if color_option == "None" else color_option
-    selected_shape = None if shape_option == "None" else shape_option
+    selected_color = None if color_option == "All" else color_option
+    selected_shape = None if shape_option == "All" else shape_option
 
     if st.button("Start Pick and Place", use_container_width=True):
-        if st.session_state.robot_connected:
-            run_pick_and_place(selected_color, selected_shape)
-        else:
-            st.error("Please connect the robot first.")
+        
+        run_pick_and_place(selected_color, selected_shape)
+        
 
 
 # ============================================================
 # Footer Status
 # ============================================================
-st.markdown("---")
-if st.session_state.robot_connected:
-    st.success("🟢 Robot Status: Connected")
-else:
-    st.error("🔴 Robot Status: Disconnected")
 st.markdown("---")
 
 st.subheader("👁️ Vision System")

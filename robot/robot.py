@@ -45,6 +45,14 @@ def Load_DROP_Data():
         #  DROP_POINT[5] = data["point6"]["rz"]
          return True
 
+def Dashboard(enable=True):
+    global dashboard
+    if enable:
+        dashboard.EnableRobot()
+        sleep(0.3)  # Small delay to ensure robot is enabled
+    else:
+        dashboard.DisableRobot()
+        sleep(0.3)  # Small delay to ensure robot is enabled
 
 ##############################################################################################
 # Connect to robot and setup
@@ -59,15 +67,17 @@ def Connect_Robot():
         print("DOBOT MG400 CONTROL WITH VISION SYSTEM")
         print("=" * 50)
         dashboard, move, feed = ConnectRobot(ip=ROBOT_IP, timeout_s=5.0)
-        
+        sleep(0.2)
         # Start feedback monitoring thread
         feed_thread = StartFeedbackThread(feed)
-        
+        sleep(0.2)
         # Setup and enable robot
         SetupRobot(dashboard, speed_ratio=50, acc_ratio=50)
 
-        Load_DROP_Data()
-
+        sleep(0.2)
+        Move_Robot_To_Position_J(HOME_POINT)
+        sleep(0.2)
+        # dashboard.DisableRobot()
 
     except KeyboardInterrupt:
         print("\n\nProgram interrupted by user")
@@ -94,7 +104,10 @@ def Disconnect_Robot():
 # Read and Save Calibration Points (CMD)
 ##############################################################################################
 def Get_Robot_Calibration_Points():
+    global move, dashboard
     try:
+        dashboard.DisableRobot()  # Disable robot to allow manual movement
+        sleep(0.5)  # Small delay to ensure robot is disabled and user can move it
         calibration_points = {}
 
         for i in range(6):
@@ -129,7 +142,8 @@ def Get_Robot_Calibration_Points():
             json.dump(calibration_points, f, indent=4)
 
         print("\nCalibration points saved successfully.")
-
+        dashboard.EnableRobot()  # Disable robot to allow manual movement
+        sleep(0.5)  # Small delay to ensure robot is disabled and user can move it
         return calibration_points
 
     except Exception as e:
@@ -142,6 +156,7 @@ def Get_Robot_Calibration_Points():
 # Read and Save Calibration Points (CMD)
 ##############################################################################################
 def Get_Robot_Calibration_Point_UI():
+    
     current_pos = GetCurrentPosition()
 
     return {
@@ -154,19 +169,23 @@ def Get_Robot_Calibration_Point_UI():
     }
 
 def Save_Calibration_Points_UI(points, file_path):
+    
     with open(file_path, "w") as f:
         json.dump(points, f, indent=4)
+    
 
 ##############################################################################################
 # Move robot to a target position Linearly
 ##############################################################################################
 def Move_Robot_To_Position_L(target_point):
-    global move
+    global move, dashboard
+
     MoveL(move, target_point)
     
     # Wait for robot to reach the point
-    arrived = WaitArrive(target_point, tolerance=1.0, timeout=30.0)
+    arrived = WaitArrive(target_point, tolerance=5.0, timeout=30.0)
     if arrived:
+        print(f"Arrived at target point: {target_point}")
         return True
     else:
         return False
@@ -175,21 +194,24 @@ def Move_Robot_To_Position_L(target_point):
 # Move robot to a target position Jointly
 ##############################################################################################
 def Move_Robot_To_Position_J(target_point):
-    global move
-    MoveJ(move, target_point)
+    global move, dashboard
 
+    MoveJ(move, target_point)
+    sleep(0.1) 
     # Wait for robot to reach the point
-    arrived = WaitArrive(target_point, tolerance=1.0, timeout=30.0)
+    arrived = WaitArrive(target_point, tolerance=5.0, timeout=10.0)
+    sleep(0.2)  # Small delay to ensure robot has settled
     if arrived:
         return True
     else:
+        print(f"\n*** ERROR: Failed to reach target point {target_point} within timeout ***")
         return False
     
 ##############################################################################################
 # Activate the digital output
 ##############################################################################################
-def Activate_Digital_Output(status=0):
-    global dashboard, output_index
+def Activate_Digital_Output(output_index=1, status=0):
+    global dashboard 
     ControlDigitalOutput(dashboard, output_index=output_index, status=status) 
     sleep(0.2)  # Wait for the command to execute
     return True
@@ -228,13 +250,16 @@ def Object_Pick_and_Place(color=None,shape=None):
             Move_Robot_To_Position_J(high)
             status = Move_Robot_To_Position_J(low)
             # Pick (vacuum ON)
-            status == True and Activate_Digital_Output(status=1)
+            status == True and Activate_Digital_Output(1, status=1)
             # Lift
             Move_Robot_To_Position_J(high)
             # Move to drop
             Move_Robot_To_Position_J(DROP_POINT_UP)
             Move_Robot_To_Position_J(DROP_POINT)
-            Activate_Digital_Output(status=0)  
+            Activate_Digital_Output(1, status=0)  
+            Activate_Digital_Output(2, status=1) 
+            sleep(0.2)  # Wait for the object to drop
+            Activate_Digital_Output(2, status=0)
             Move_Robot_To_Position_J(DROP_POINT_UP)
 
         # Return Home after finishing

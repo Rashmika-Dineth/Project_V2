@@ -8,19 +8,22 @@ import perception.object_detection as object_detection
 
 def calibrate():
     print("Starting calibration...")
-    robot.Dashboard(enable=False)
 
     calibration.capture_image()
     calibration.collect_image_points()
+    sleep(0.2)
+    robot.Connect_Robot()
+    robot.Dashboard(False)
+    sleep(0.2)
     robot.Get_Robot_Calibration_Points()
-
+    sleep(0.2)
+    robot.Disconnect_Robot()
     print("Generating homography matrix...")
     sleep(0.5)
 
     calibration.generate_homography()
 
     print("Calibration completed successfully.")
-    robot.Dashboard(enable=True)
 
 
 def detect(mode, color=None, shape=None):
@@ -80,7 +83,7 @@ def main():
     parser_detect.add_argument(
         "--mode",
         required=True,
-        choices=["plan", "execute"]
+        choices=["plan", "execute","calibrate"]
     )
 
     # Optional filters

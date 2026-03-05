@@ -4,18 +4,19 @@ import os
 import sys
 from time import sleep
 
+# ============================================================
+# Import Project Modules
+# ============================================================
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import calibration.calibration as calibration
 import robot.robot as robot
 import perception.object_detection as object_detection
 
-
 # ============================================================
 # Page Config
 # ============================================================
-
-robot_calibration_point_file = "robot_calibration_points.json"
 
 st.set_page_config(
     page_title="Dobot MG400 - Machine Vision",
@@ -26,17 +27,12 @@ st.set_page_config(
 st.title("🤖 Dobot MG400 Machine Vision Dashboard")
 st.markdown("---")
 
-
 # ============================================================
 # Session State
 # ============================================================
 
-
-if "calibration_step" not in st.session_state:
-    st.session_state.calibration_step = 0
-
-if "calibration_points" not in st.session_state:
-    st.session_state.calibration_points = {}
+if "robot_connected" not in st.session_state:
+    st.session_state.robot_connected = False
 
 # ============================================================
 # Helper Functions
@@ -45,47 +41,92 @@ if "calibration_points" not in st.session_state:
 def connect_robot():
     try:
         robot.Connect_Robot()
+        st.session_state.robot_connected = True
         st.success("Robot connected successfully.")
     except Exception as e:
-        st.error(f"Failed to connect to robot")
+        st.error(f"Failed to connect robot: {e}")
 
 
 def disconnect_robot():
-    try:        
+    try:
         robot.Disconnect_Robot()
+        st.session_state.robot_connected = False
         st.warning("Robot disconnected.")
     except Exception as e:
-        st.error(f"Failed to disconnect from robot")
+        st.error(f"Failed to disconnect robot: {e}")
 
 
-def run_detection():
-    with st.spinner("Capturing and detecting objects..."):
-        robot.Dashboard(enable=False) 
-        sleep(0.2)
-        calibration.capture_image()
-        object_detection.save_objects_with_robot_coordinates(color=None,shape=None)
-        object_detection.mark_coordinates_on_annotated_image()
-        robot.Dashboard(enable=True) 
-        sleep(0.2)
-    st.success("Detection completed.")
+def run_calibration():
+    try:
+        with st.spinner("Running calibration..."):
+
+            calibration.capture_image()
+            calibration.collect_image_points()
+
+            sleep(0.2)
+
+            robot.Connect_Robot()
+            robot.Dashboard(False)
+
+            sleep(0.2)
+
+            robot.Get_Robot_Calibration_Points()
+
+            sleep(0.2)
+
+            robot.Disconnect_Robot()
+
+            sleep(0.5)
+
+            calibration.generate_homography()
+
+        st.success("Calibration completed successfully.")
+
+    except Exception as e:
+        st.error(f"Calibration failed: {str(e)}")
 
 
-def run_pick_and_place(color, shape):
-    with st.spinner("Running Pick and Place..."):
-        robot.Connect_Robot()
-        robot.Load_DROP_Data()
-     # Disable robot during object detection
-        # calibration.capture_image()
-        # object_detection.save_objects_with_robot_coordinates()
-        # object_detection.mark_coordinates_on_annotated_image()
-        sleep(0.3)
-        value = robot.Object_Pick_and_Place(color=color, shape=shape)
-        sleep(0.3)
-        robot.Disconnect_Robot()
-        sleep(0.3)
-        if value == False:
-            st.error("No matching objects")
-    st.success("Pick and Place completed.")
+def run_detection(color=None, shape=None):
+    try:
+        with st.spinner("Capturing and detecting objects..."):
+
+            calibration.capture_image()
+
+            object_detection.save_objects_with_robot_coordinates(color, shape)
+
+            object_detection.mark_coordinates_on_annotated_image()
+
+            robot.Load_DROP_Data()
+
+        st.success("Object detection completed.")
+
+    except Exception as e:
+        st.error(f"Detection failed: {str(e)}")
+
+
+def run_pick_and_place(color=None, shape=None):
+    try:
+        with st.spinner("Running Pick and Place..."):
+
+            robot.Connect_Robot()
+
+            robot.Load_DROP_Data()
+
+            sleep(0.3)
+
+            value = robot.Object_Pick_and_Place(color=color, shape=shape)
+
+            sleep(0.3)
+
+            robot.Disconnect_Robot()
+
+            if value == False:
+                st.warning("No matching objects found.")
+
+        st.success("Pick and Place completed.")
+
+    except Exception as e:
+        st.error(f"Pick and Place failed: {str(e)}")
 
 
 def show_image(image_path, title):
@@ -95,99 +136,95 @@ def show_image(image_path, title):
     else:
         st.warning(f"{title} not found.")
 
-def run_calibration():
-    try:
-        with st.spinner("Running calibration..."):
-            robot.Dashboard(enable=False) 
-            sleep(0.2)
-            calibration.capture_image()
-            calibration.collect_image_points()
-
-            # robot.Get_Robot_Calibration_Point_UI()
-            # robot.Save_Calibration_Points_UI(st.session_state.calibration_points, robot_calibration_point_file)
-            calibration.generate_homography()
-            robot.Dashboard(enable=True) 
-            sleep(0.2)
-        st.success("Calibration completed.")
-
-    except Exception as e:
-        st.error(f"Calibration failed: {str(e)}")
 
 # ============================================================
 # Layout
 # ============================================================
 
-col1, col2 = st.columns(2)
+left_col, right_col = st.columns(2)
 
 # ============================================================
-# LEFT PANEL – ROBOT CONTROL
+# LEFT PANEL – ROBOT CONTROL + DETECTION
 # ============================================================
 
-with col1:
+with left_col:
+
     st.subheader("🔌 Robot Control")
 
-    if st.button("Connect Robot", use_container_width=True):
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("Connect Robot", use_container_width=True):
             connect_robot()
-    if st.button("Disconnect Robot", use_container_width=True):
+
+    with col2:
+        if st.button("Disconnect Robot", use_container_width=True):
             disconnect_robot()
 
-    if st.button("Calibration", use_container_width=True):
-            run_calibration()
+    st.markdown("---")
 
-    if st.button("Run Object Detection", use_container_width=True):
-            run_detection()
+    if st.button("Run Calibration", use_container_width=True):
+        run_calibration()
 
     st.markdown("---")
-    st.subheader("📦 Pick & Place Filters")
 
+    st.subheader("👁 Vision System")
 
-
-# ============================================================
-# RIGHT PANEL – VISION SYSTEM
-# ============================================================
-
-with col2:
-    st.subheader("�️ Vision System")
-    # Filtering Options
-    color_option = st.selectbox(
+    detect_color_option = st.selectbox(
         "Select Color (optional)",
         ["All", "red", "green", "blue", "yellow"]
     )
 
-    shape_option = st.selectbox(
+    detect_shape_option = st.selectbox(
         "Select Shape (optional)",
         ["All", "circle", "square", "triangle"]
     )
 
-    selected_color = None if color_option == "All" else color_option
-    selected_shape = None if shape_option == "All" else shape_option
+    detect_color = None if detect_color_option == "All" else detect_color_option
+    detect_shape = None if detect_shape_option == "All" else detect_shape_option
+
+    if st.button("Start Object Detection", use_container_width=True):
+        run_detection(detect_color, detect_shape)
+
+
+# ============================================================
+# RIGHT PANEL – PICK AND PLACE
+# ============================================================
+
+with right_col:
+
+    st.subheader("📦 Picking System")
+
+    pick_color_option = st.selectbox(
+        "Select Color (optional)",
+        ["All", "red", "green", "blue", "yellow"]
+    )
+
+    pick_shape_option = st.selectbox(
+        "Select Shape (optional)",
+        ["All", "circle", "square", "triangle"]
+    )
+
+    pick_color = None if pick_color_option == "All" else pick_color_option
+    pick_shape = None if pick_shape_option == "All" else pick_shape_option
 
     if st.button("Start Pick and Place", use_container_width=True):
-        
-        run_pick_and_place(selected_color, selected_shape)
-        
-
+        run_pick_and_place(pick_color, pick_shape)
 
 # ============================================================
-# Footer Status
+# Vision Output Images
 # ============================================================
-st.markdown("---")
 
-st.subheader("👁️ Vision System")
-col1, col2, col3 = st.columns(3)
 st.markdown("---")
-with col1:
-    try:
-        st.image("outputs/captured_img.png", caption="Captured Image", width=500)
-    except:
-        st.warning("Captured image not found.")
-with col2:
-    try:
-        st.image("outputs/annotated_img.png", caption="Annotated Image", width=500) 
-    except:
-        st.warning("Annotated image not found.")
-with col3:    
-    try:
-        st.image("outputs/final_marked_img.png", caption="Marked Annotated Image", width=500)
-    except:
-        st.warning("Marked annotated image not found.")
+st.subheader("👁 Vision Output")
+
+img_col1, img_col2, img_col3 = st.columns(3)
+
+with img_col1:
+    show_image("outputs/captured_img.png", "Captured Image")
+
+with img_col2:
+    show_image("outputs/annotated_img.png", "Annotated Image")
+
+with img_col3:
+    show_image("outputs/final_marked_img.png", "Marked Annotated Image")

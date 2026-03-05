@@ -9,6 +9,7 @@ import threading
 from robot.dobot_api import DobotApiDashboard, DobotApi, DobotApiMove, MyType, alarmAlarmJsonFile
 from time import sleep
 import numpy as np
+import time
 
 # Global variables for robot feedback
 current_actual = None
@@ -124,8 +125,8 @@ def WaitArrive(target_point, tolerance=1.0, timeout=30.0):
         bool: True if robot arrived, False if timeout
     """
     print(f"Waiting for robot to reach target: {target_point}")
-    start_time = sleep(0)  # Using sleep to track time
-    elapsed = 0
+    start_time = time.time()  # Using sleep to track time
+    elapsed = time.time() - start_time
     
     while elapsed < timeout:
         is_arrive = True

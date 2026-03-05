@@ -234,7 +234,7 @@ def Object_Pick_and_Place(color=None,shape=None):
 
         if len(targets) == 0:
             print("No matching objects found.")
-            return
+            return False
 
         # Move to Home first
         Move_Robot_To_Position_J(HOME_POINT)

@@ -63,7 +63,7 @@ def run_detection():
         robot.Dashboard(enable=False) 
         sleep(0.2)
         calibration.capture_image()
-        object_detection.save_objects_with_robot_coordinates()
+        object_detection.save_objects_with_robot_coordinates(color=None,shape=None)
         object_detection.mark_coordinates_on_annotated_image()
         robot.Dashboard(enable=True) 
         sleep(0.2)
@@ -72,14 +72,19 @@ def run_detection():
 
 def run_pick_and_place(color, shape):
     with st.spinner("Running Pick and Place..."):
+        robot.Connect_Robot()
         robot.Load_DROP_Data()
      # Disable robot during object detection
         # calibration.capture_image()
         # object_detection.save_objects_with_robot_coordinates()
         # object_detection.mark_coordinates_on_annotated_image()
-        robot.Dashboard(enable=True)
         sleep(0.3)
-        robot.Object_Pick_and_Place(color=color, shape=shape)
+        value = robot.Object_Pick_and_Place(color=color, shape=shape)
+        sleep(0.3)
+        robot.Disconnect_Robot()
+        sleep(0.3)
+        if value == False:
+            st.error("No matching objects")
     st.success("Pick and Place completed.")
 
 
